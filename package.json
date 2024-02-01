@@ -1,0 +1,36 @@
+{
+  "name": "Dokht_pro",
+  "version": "1.0.0",
+  "description": "Dokht_pro",
+  "main": "main.js",
+  "author": "Ahmad Wali Sharify",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron main.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "electron-serve": "^1.2.0",
+    "node-hid": "^3.0.0",
+    "usb": "^2.11.0"
+  },
+  "devDependencies": {
+    "electron": "^28.1.4",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "dokht.pro.com.1.0.1",
+    "files": [
+      "frontend/**/*",
+      "main.js"
+    ],
+    "extraResources": [
+      "run_server"
+    ],
+    "win": {
+      "target": "nsis",
+      "artifactName": "${productName} Setup ${version}.${ext}"
+    }
+  }
+}
