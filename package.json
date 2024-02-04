@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "electron-serve": "^1.2.0",
-    "node-hid": "^3.0.0",
     "usb": "^2.11.0"
   },
   "devDependencies": {
@@ -23,14 +22,16 @@
     "appId": "dokht.pro.com.1.0.1",
     "files": [
       "frontend/**/*",
-      "main.js"
+      "main.js",
+      "usb_search.js"
     ],
     "extraResources": [
       "run_server"
     ],
     "win": {
       "target": "nsis",
-      "artifactName": "${productName} Setup ${version}.${ext}"
+      "artifactName": "${productName} Setup ${version}.${ext}",
+      "icon": "frontend/assets/icon.ico"
     }
   }
 }

@@ -1,63 +1,67 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, dialog } = require("electron");
 const { spawn } = require("child_process");
 const serve = require("electron-serve");
 const path = require("path");
-const usb = require("usb");
-const HID = require("node-hid");
+const {
+  executePowerShellCommand,
+  searchSerialNumber,
+} = require("./usb_search");
+const { usb } = require("usb");
 
 let mainWindow;
 let backendProcess;
-const ALLOWED_VID = 0x0930;
-const ALLOWED_PID = 0x6545;
 
 const loadURL = serve({ directory: path.join(__dirname, "frontend") });
 app.on("ready", () => {
   // Check if the allowed USB device is connected
-  checkAllowedDevice();
-});
 
-// Function to check if the allowed USB device is connected
-function checkAllowedDevice() {
-  const devices = usb.getDeviceList();
-  for (const device of devices) {
-    console.log(device);
-    const deviceDescriptor = device.deviceDescriptor;
-    const serialNumber = deviceDescriptor.iSerialNumber ? device.getStringDescriptor(deviceDescriptor.iSerialNumber) : null;
-    if (
-      deviceDescriptor.idVendor === ALLOWED_VID &&
-      deviceDescriptor.idProduct === ALLOWED_PID
-    ) {
-      console.log("Allowed USB device found:", deviceDescriptor, "Serial Number:", serialNumber);
-      // If the allowed USB device is connected, open the application
-      mainWindow = new BrowserWindow({
-        width: 1000,
-        height: 900,
-      });
+  const serialNumberToSearch = "00187D1174FBED71F000B633"; // Replace with your serial number
 
-      loadURL(mainWindow);
+  // Execute PowerShell command to list USB devices
+  const command = "wmic path Win32_USBControllerDevice get Dependent";
+  executePowerShellCommand(command)
+    .then((output) => {
+      // Search for serial number in output
+      const found = searchSerialNumber(output, serialNumberToSearch);
+      if (found) {
+        mainWindow = new BrowserWindow({
+          width: 1000,
+          height: 900,
+        });
 
-      if (process.env.NODE_ENV === "development") {
-        backendProcess = spawn(
-          path.join(__dirname, "run_server/run_server.exe")
-        );
+        loadURL(mainWindow);
+
+        if (process.env.NODE_ENV === "development") {
+          backendProcess = spawn(
+            path.join(__dirname, "run_server/run_server.exe")
+          );
+        } else {
+          backendProcess = spawn(
+            path.join(process.resourcesPath, "run_server/run_server.exe")
+          );
+        }
+
+        usb.on("detach", function (device) {
+          executePowerShellCommand(command).then((output) => {
+            const found = searchSerialNumber(output, serialNumberToSearch);
+            if (!found) {
+              mainWindow.close();
+            }
+          });
+        });
+
+        mainWindow.on("closed", () => {
+          mainWindow = null;
+          backendProcess.kill();
+          backendProcess = null;
+        });
       } else {
-        backendProcess = spawn(
-          path.join(process.resourcesPath, "run_server/run_server.exe")
-        );
+        console.log("USB flash drive not found.");
+        dialog.showErrorBox("Error", "لطفا فلش خریداری شده را وارد کنید");
+        throw new Error("This is a test error");
       }
-
-      mainWindow.on("closed", () => {
-        mainWindow = null;
-        backendProcess.kill();
-        backendProcess = null;
-      });
-      // Other initialization code...
-      return;
-    }
-  }
-
-  // If the allowed USB device is not connected, display an error message and quit
-  console.error("Allowed USB device not found.");
-  app.quit();
-  throw new Error("لطفا فلش خریداری شده را وارد کنید.");
-}
+    })
+    .catch((error) => {
+      console.error("Error executing PowerShell command:", error);
+    });
+});
